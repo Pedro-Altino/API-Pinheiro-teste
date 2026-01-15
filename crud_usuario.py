@@ -77,16 +77,26 @@ async def update_usuario(id_usuario: int, usuario: UsuarioUpdate, current_user: 
             values.append(usuario.email)
         
         if not updates:
-            raise HTTPException(status_code=400, detail="Nenhum campo para atualizar")
+            raise HTTPException(status_code=400, detail="Nenhum campo fornecido para atualização. Verifique os nomes dos campos.")
         
         values.append(id_usuario)
         query = f"UPDATE usuario SET {', '.join(updates)} WHERE id_usuario = %s"
         cursor.execute(query, values)
+        
+        if cursor.rowcount == 0:
+            # Verifica se usuário existe
+            cursor.execute("SELECT 1 FROM usuario WHERE id_usuario = %s", (id_usuario,))
+            if not cursor.fetchone():
+               raise HTTPException(status_code=404, detail=f"Usuário com ID {id_usuario} não encontrado")
+        
         conn.commit()
         return {"message": "Usuário atualizado com sucesso"}
+    except HTTPException:
+        raise
     except Exception as e:
         conn.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        print(f"Erro ao atualizar usuário: {e}") # Log para ajudar no debug
+        raise HTTPException(status_code=400, detail=f"Erro ao atualizar dados: {str(e)}")
     finally:
         cursor.close()
         conn.close()

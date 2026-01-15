@@ -75,21 +75,30 @@ async def update_produto(id_produto: int, produto: ProdutoUpdate, current_user: 
         if produto.quant_min_estoque is not None:
             updates.append("quant_min_estoque = %s")
             values.append(produto.quant_min_estoque)
-        if produto.id_usuario_cadastrou is not None:
-            updates.append("id_usuario_cadastrou = %s")
-            values.append(produto.id_usuario_cadastrou)
+        
+        # id_usuario_cadastrou removido pois não consta no model ProdutoUpdate e não deve ser alterado
         
         if not updates:
-            raise HTTPException(status_code=400, detail="Nenhum campo para atualizar")
+            raise HTTPException(status_code=400, detail="Nenhum campo fornecido para atualização")
         
         values.append(id_produto)
         query = f"UPDATE produto SET {', '.join(updates)} WHERE id_produto = %s"
         cursor.execute(query, values)
+        
+        if cursor.rowcount == 0:
+             # Verifica se o produto existe
+            cursor.execute("SELECT 1 FROM produto WHERE id_produto = %s", (id_produto,))
+            if not cursor.fetchone():
+                raise HTTPException(status_code=404, detail=f"Produto com ID {id_produto} não encontrado")
+
         conn.commit()
         return {"message": "Produto atualizado com sucesso"}
+    except HTTPException:
+        raise
     except Exception as e:
         conn.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        print(f"Erro ao atualizar produto: {e}")
+        raise HTTPException(status_code=400, detail=f"Erro ao atualizar produto: {str(e)}")
     finally:
         cursor.close()
         conn.close()
