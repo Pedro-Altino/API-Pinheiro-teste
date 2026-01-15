@@ -96,7 +96,6 @@ async def update_cliente(id_cliente: int, cliente: ClienteUpdate, current_user: 
         raise
     except psycopg2.Error as e:
         conn.rollback()
-        # 23505 is Unique Violation in Postgres
         if e.pgcode == '23505':
             raise HTTPException(status_code=400, detail="CPF já cadastrado.")
         raise HTTPException(status_code=400, detail=f"Erro de banco de dados: {e}")

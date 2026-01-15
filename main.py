@@ -21,7 +21,6 @@ from crud_views import router as views_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
     print("\n" + "="*60)
     print("🚀 Pinheiro API iniciada com sucesso!")
     print("="*60)
@@ -29,7 +28,6 @@ async def lifespan(app: FastAPI):
     print("📚 Documentação: http://127.0.0.1:5000/docs")
     print("="*60 + "\n")
     yield
-    # Shutdown (se necessário)
     print("\n" + "="*60)
     print("🛑 Pinheiro API encerrada")
     print("="*60 + "\n")
@@ -40,7 +38,6 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configurar CORS para permitir requisições do frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000", "http://127.0.0.1:3001"],

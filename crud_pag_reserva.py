@@ -11,12 +11,10 @@ async def create_pag_reserva(pag: PagReservaCreate, current_user: dict = Depends
     conn = get_db_connection()
     cursor = get_db_cursor(conn)
     try:
-        # Verifica se o pagamento existe
         cursor.execute("SELECT id_pagamento FROM pagamento WHERE id_pagamento = %s", (pag.id_pagamento,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="Pagamento não encontrado")
         
-        # Verifica se a reserva existe
         cursor.execute("SELECT id_reserva FROM reserva WHERE id_reserva = %s", (pag.id_reserva,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="Reserva não encontrada")

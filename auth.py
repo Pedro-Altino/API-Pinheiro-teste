@@ -5,7 +5,6 @@ from db import get_db_connection, get_db_cursor
 security = HTTPBasic(auto_error=True)
 
 def verify_credentials(credentials: HTTPBasicCredentials = Depends(security)):
-    # Valida se credenciais foram fornecidas
     if not credentials or not credentials.username or not credentials.password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
