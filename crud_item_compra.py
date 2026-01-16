@@ -11,15 +11,28 @@ async def create_item_compra(item: ItemCompraCreate, current_user: dict = Depend
     conn = get_db_connection()
     cursor = get_db_cursor(conn)
     try:
+        # Verifica se compra existe
+        cursor.execute("SELECT 1 FROM compra WHERE id_compra = %s", (item.id_compra,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Compra não encontrada")
+            
+        # Verifica se produto existe
+        cursor.execute("SELECT 1 FROM produto WHERE id_produto = %s", (item.id_produto,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Produto não encontrado")
+
         cursor.execute(
-            """INSERT INTO item_compra (id_compra, id_produto, quantidade, preco_unitario) 
-               VALUES (%s, %s, %s, %s)""",
-            (item.id_compra, item.id_produto, item.quantidade, item.preco_unitario)
+            """INSERT INTO item_compra (id_compra, id_produto, quantidade) 
+               VALUES (%s, %s, %s)""",
+            (item.id_compra, item.id_produto, item.quantidade)
         )
         conn.commit()
         return {"message": "Item da compra criado com sucesso"}
+    except HTTPException:
+        raise
     except Exception as e:
         conn.rollback()
+        print(f"Erro ao criar item da compra: {e}")
         raise HTTPException(status_code=400, detail=f"Erro ao criar item da compra: {str(e)}")
     finally:
         cursor.close()
@@ -92,12 +105,11 @@ async def update_item_compra(id_item_compra: int, item: ItemCompraUpdate, curren
         if item.quantidade is not None:
             updates.append("quantidade = %s")
             values.append(item.quantidade)
-        if item.preco_unitario is not None:
-            updates.append("preco_unitario = %s")
-            values.append(item.preco_unitario)
+        
+        # preco_unitario removido pois nao consta na tabela item_compra
         
         if not updates:
-            raise HTTPException(status_code=400, detail="Nenhum campo para atualizar")
+            raise HTTPException(status_code=400, detail="Nenhum campo fornecido para atualização")
         
         values.append(id_item_compra)
         query = f"UPDATE item_compra SET {', '.join(updates)} WHERE id_item_compra = %s"
@@ -105,13 +117,17 @@ async def update_item_compra(id_item_compra: int, item: ItemCompraUpdate, curren
         conn.commit()
         
         if cursor.rowcount == 0:
-            raise HTTPException(status_code=404, detail="Item da compra não encontrado")
+            # Verifica se item existe
+            cursor.execute("SELECT 1 FROM item_compra WHERE id_item_compra = %s", (id_item_compra,))
+            if not cursor.fetchone():
+               raise HTTPException(status_code=404, detail=f"Item da compra com ID {id_item_compra} não encontrado")
         
         return {"message": "Item da compra atualizado com sucesso"}
     except HTTPException:
         raise
     except Exception as e:
         conn.rollback()
+        print(f"Erro ao atualizar item da compra: {e}")
         raise HTTPException(status_code=400, detail=f"Erro ao atualizar item da compra: {str(e)}")
     finally:
         cursor.close()

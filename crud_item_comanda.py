@@ -11,15 +11,28 @@ async def create_item_comanda(item: ItemComandaCreate, current_user: dict = Depe
     conn = get_db_connection()
     cursor = get_db_cursor(conn)
     try:
+        # Verifica se comanda existe
+        cursor.execute("SELECT 1 FROM comanda WHERE id_comanda = %s", (item.id_comanda,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Comanda não encontrada")
+            
+        # Verifica se produto existe
+        cursor.execute("SELECT 1 FROM produto WHERE id_produto = %s", (item.id_produto,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Produto não encontrado")
+
         cursor.execute(
-            """INSERT INTO item_comanda (id_comanda, id_produto, quantidade, preco_unitario) 
-               VALUES (%s, %s, %s, %s)""",
-            (item.id_comanda, item.id_produto, item.quantidade, item.preco_unitario)
+            """INSERT INTO item_comanda (id_comanda, id_produto, quantidade) 
+               VALUES (%s, %s, %s)""",
+            (item.id_comanda, item.id_produto, item.quantidade)
         )
         conn.commit()
         return {"message": "Item da comanda criado com sucesso"}
+    except HTTPException:
+        raise
     except Exception as e:
         conn.rollback()
+        print(f"Erro ao criar item da comanda: {e}")
         raise HTTPException(status_code=400, detail=f"Erro ao criar item da comanda: {str(e)}")
     finally:
         cursor.close()
@@ -92,26 +105,29 @@ async def update_item_comanda(id_item_comanda: int, item: ItemComandaUpdate, cur
         if item.quantidade is not None:
             updates.append("quantidade = %s")
             values.append(item.quantidade)
-        if item.preco_unitario is not None:
-            updates.append("preco_unitario = %s")
-            values.append(item.preco_unitario)
         
+        # preco_unitario removido pois nao consta na tabela item_comanda
+
         if not updates:
-            raise HTTPException(status_code=400, detail="Nenhum campo para atualizar")
+            raise HTTPException(status_code=400, detail="Nenhum campo fornecido para atualização")
         
         values.append(id_item_comanda)
         query = f"UPDATE item_comanda SET {', '.join(updates)} WHERE id_item_comanda = %s"
         cursor.execute(query, values)
-        conn.commit()
         
         if cursor.rowcount == 0:
-            raise HTTPException(status_code=404, detail="Item da comanda não encontrado")
+            # Verifica se item existe
+            cursor.execute("SELECT 1 FROM item_comanda WHERE id_item_comanda = %s", (id_item_comanda,))
+            if not cursor.fetchone():
+               raise HTTPException(status_code=404, detail=f"Item da comanda com ID {id_item_comanda} não encontrado")
         
+        conn.commit()
         return {"message": "Item da comanda atualizado com sucesso"}
     except HTTPException:
         raise
     except Exception as e:
         conn.rollback()
+        print(f"Erro ao atualizar item da comanda: {e}")
         raise HTTPException(status_code=400, detail=f"Erro ao atualizar item da comanda: {str(e)}")
     finally:
         cursor.close()
