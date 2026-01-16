@@ -41,13 +41,15 @@ async def get_movimentas(current_user: dict = Depends(require_auth)):
 @router.get("/movimentas/{id_movimenta}", response_model=dict)
 async def get_movimenta(id_movimenta: int, current_user: dict = Depends(require_auth)):
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = get_db_cursor(conn)
     try:
         cursor.execute("SELECT * FROM movimenta WHERE id_movimenta = %s", (id_movimenta,))
         row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Movimentação não encontrada")
-        return row
+        return dict(row)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     finally:
@@ -57,7 +59,7 @@ async def get_movimenta(id_movimenta: int, current_user: dict = Depends(require_
 @router.put("/movimentas/{id_movimenta}", response_model=dict)
 async def update_movimenta(id_movimenta: int, movimenta: MovimentaUpdate, current_user: dict = Depends(require_auth)):
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = get_db_cursor(conn)
     try:
         updates = []
         values = []
@@ -80,8 +82,17 @@ async def update_movimenta(id_movimenta: int, movimenta: MovimentaUpdate, curren
         values.append(id_movimenta)
         query = f"UPDATE movimenta SET {', '.join(updates)} WHERE id_movimenta = %s"
         cursor.execute(query, values)
+        
+        if cursor.rowcount == 0:
+            # Verifica se movimenta existe
+            cursor.execute("SELECT 1 FROM movimenta WHERE id_movimenta = %s", (id_movimenta,))
+            if not cursor.fetchone():
+               raise HTTPException(status_code=404, detail=f"Movimentação com ID {id_movimenta} não encontrada")
+
         conn.commit()
         return {"message": "Movimentação atualizada com sucesso"}
+    except HTTPException:
+        raise
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))

@@ -78,27 +78,30 @@ async def update_reserva(id_reserva: int, reserva: ReservaUpdate, current_user: 
         if reserva.id_campo is not None:
             updates.append("id_campo = %s")
             values.append(reserva.id_campo)
-        if reserva.id_usuario_cadastrou is not None:
-            updates.append("id_usuario_cadastrou = %s")
-            values.append(reserva.id_usuario_cadastrou)
+        
+        # id_usuario_cadastrou removido pois não consta no model ReservaUpdate
         
         if not updates:
-            raise HTTPException(status_code=400, detail="Nenhum campo para atualizar")
+            raise HTTPException(status_code=400, detail="Nenhum campo fornecido para atualização")
         
         values.append(id_reserva)
         query = f"UPDATE reserva SET {', '.join(updates)} WHERE id_reserva = %s"
         cursor.execute(query, values)
-        conn.commit()
         
         if cursor.rowcount == 0:
-            raise HTTPException(status_code=404, detail="Reserva não encontrada")
+            # Verifica se reserva existe
+            cursor.execute("SELECT 1 FROM reserva WHERE id_reserva = %s", (id_reserva,))
+            if not cursor.fetchone():
+               raise HTTPException(status_code=404, detail=f"Reserva com ID {id_reserva} não encontrada")
         
+        conn.commit()
         return {"message": "Reserva atualizada com sucesso"}
     except HTTPException:
         raise
     except Exception as e:
         conn.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        print(f"Erro ao atualizar reserva: {e}")
+        raise HTTPException(status_code=400, detail=f"Erro ao atualizar reserva: {str(e)}")
     finally:
         cursor.close()
         conn.close()

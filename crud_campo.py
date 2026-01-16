@@ -41,13 +41,15 @@ async def get_campos(current_user: dict = Depends(require_auth)):
 @router.get("/campos/{id_campo}", response_model=dict)
 async def get_campo(id_campo: int, current_user: dict = Depends(require_auth)):
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = get_db_cursor(conn)
     try:
         cursor.execute("SELECT * FROM campo WHERE id_campo = %s", (id_campo,))
         row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Campo não encontrado")
-        return row
+        return dict(row)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     finally:

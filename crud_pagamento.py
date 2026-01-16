@@ -72,21 +72,30 @@ async def update_pagamento(id_pagamento: int, pagamento: PagamentoUpdate, curren
         if pagamento.tipo_pagamento is not None:
             updates.append("tipo_pagamento = %s")
             values.append(pagamento.tipo_pagamento)
-        if pagamento.id_usuario_cadastrou is not None:
-            updates.append("id_usuario_cadastrou = %s")
-            values.append(pagamento.id_usuario_cadastrou)
+        
+        # id_usuario_cadastrou removido pois nao consta no model PagamentoUpdate
         
         if not updates:
-            raise HTTPException(status_code=400, detail="Nenhum campo para atualizar")
+            raise HTTPException(status_code=400, detail="Nenhum campo fornecido para atualização")
         
         values.append(id_pagamento)
         query = f"UPDATE pagamento SET {', '.join(updates)} WHERE id_pagamento = %s"
         cursor.execute(query, values)
+        
+        if cursor.rowcount == 0:
+            # Verifica se pagamento existe
+            cursor.execute("SELECT 1 FROM pagamento WHERE id_pagamento = %s", (id_pagamento,))
+            if not cursor.fetchone():
+               raise HTTPException(status_code=404, detail=f"Pagamento com ID {id_pagamento} não encontrado")
+        
         conn.commit()
         return {"message": "Pagamento atualizado com sucesso"}
+    except HTTPException:
+        raise
     except Exception as e:
         conn.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        print(f"Erro ao atualizar pagamento: {e}")
+        raise HTTPException(status_code=400, detail=f"Erro ao atualizar pagamento: {str(e)}")
     finally:
         cursor.close()
         conn.close()

@@ -76,19 +76,21 @@ async def update_cliente(id_cliente: int, cliente: ClienteUpdate, current_user: 
         if cliente.tipo is not None:
             updates.append("tipo = %s")
             values.append(cliente.tipo)
-        if cliente.id_usuario_cadastrou is not None:
-            updates.append("id_usuario_cadastrou = %s")
-            values.append(cliente.id_usuario_cadastrou)
+        
+        # id_usuario_cadastrou removido da atualização para manter o registro original
         
         if not updates:
-            raise HTTPException(status_code=400, detail="Nenhum campo para atualizar")
+            raise HTTPException(status_code=400, detail="Nenhum campo fornecido para atualização")
         
         values.append(id_cliente)
         query = f"UPDATE cliente SET {', '.join(updates)} WHERE id_cliente = %s"
         cursor.execute(query, values)
         
         if cursor.rowcount == 0:
-            raise HTTPException(status_code=404, detail="Cliente não encontrado")
+            # Verifica se cliente existe
+            cursor.execute("SELECT 1 FROM cliente WHERE id_cliente = %s", (id_cliente,))
+            if not cursor.fetchone():
+               raise HTTPException(status_code=404, detail=f"Cliente com ID {id_cliente} não encontrado")
 
         conn.commit()
         return {"message": "Cliente atualizado com sucesso"}
@@ -96,11 +98,16 @@ async def update_cliente(id_cliente: int, cliente: ClienteUpdate, current_user: 
         raise
     except psycopg2.Error as e:
         conn.rollback()
+        print(f"Erro PGSql ao atualizar cliente: {e}")
         if e.pgcode == '23505':
-            raise HTTPException(status_code=400, detail="CPF já cadastrado.")
+             if 'cpf' in e.pgerror:
+                raise HTTPException(status_code=400, detail="CPF já cadastrado.")
+             if 'email' in e.pgerror:
+                raise HTTPException(status_code=400, detail="Email já cadastrado.")
         raise HTTPException(status_code=400, detail=f"Erro de banco de dados: {e}")
     except Exception as e:
         conn.rollback()
+        print(f"Erro inesperado ao atualizar cliente: {e}")
         raise HTTPException(status_code=400, detail=f"Erro inesperado: {str(e)}")
     finally:
         cursor.close()

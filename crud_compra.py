@@ -84,26 +84,29 @@ async def update_compra(id_compra: int, compra: CompraUpdate, current_user: dict
         if compra.cpf_cliente is not None:
             updates.append("cpf_cliente = %s")
             values.append(compra.cpf_cliente)
-        if compra.id_usuario_cadastrou is not None:
-            updates.append("id_usuario_cadastrou = %s")
-            values.append(compra.id_usuario_cadastrou)
+        
+        # id_usuario_cadastrou removido pois nao consta no model CompraUpdate
         
         if not updates:
-            raise HTTPException(status_code=400, detail="Nenhum campo para atualizar")
+            raise HTTPException(status_code=400, detail="Nenhum campo fornecido para atualização")
         
         values.append(id_compra)
         query = f"UPDATE compra SET {', '.join(updates)} WHERE id_compra = %s"
         cursor.execute(query, values)
-        conn.commit()
         
         if cursor.rowcount == 0:
-            raise HTTPException(status_code=404, detail="Compra não encontrada")
+            # Verifica se compra existe
+            cursor.execute("SELECT 1 FROM compra WHERE id_compra = %s", (id_compra,))
+            if not cursor.fetchone():
+               raise HTTPException(status_code=404, detail=f"Compra com ID {id_compra} não encontrada")
         
+        conn.commit()
         return {"message": "Compra atualizada com sucesso"}
     except HTTPException:
         raise
     except Exception as e:
         conn.rollback()
+        print(f"Erro ao atualizar compra: {e}")
         raise HTTPException(status_code=400, detail=f"Erro ao atualizar compra: {str(e)}")
     finally:
         cursor.close()
