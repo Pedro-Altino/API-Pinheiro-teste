@@ -121,29 +121,6 @@ CREATE TABLE IF NOT EXISTS pag_reserva (
     UNIQUE(id_pagamento, id_reserva)
 );
 
-CREATE OR REPLACE VIEW vw_item_comanda_completo AS
-SELECT
-    ic.id_item_comanda,
-    ic.id_comanda,
-    ic.id_produto,
-    ic.quantidade,
-    COALESCE(p.preco, 0) AS preco_unitario,
-    (COALESCE(ic.quantidade, 0) * COALESCE(p.preco, 0)) AS subtotal,
-    COALESCE(p.nome, 'Desconhecido') AS produto_nome
-FROM item_comanda ic
-LEFT JOIN produto p ON ic.id_produto = p.id_produto;
-
-CREATE OR REPLACE VIEW vw_item_compra_completo AS
-SELECT
-    ic.id_item_compra,
-    ic.id_compra,
-    ic.id_produto,
-    ic.quantidade,
-    COALESCE(p.preco, 0) AS preco_unitario,
-    (COALESCE(ic.quantidade, 0) * COALESCE(p.preco, 0)) AS subtotal,
-    COALESCE(p.nome, 'Desconhecido') AS produto_nome
-FROM item_compra ic
-LEFT JOIN produto p ON ic.id_produto = p.id_produto;
 
 CREATE OR REPLACE VIEW vw_produtos_estoque AS
 SELECT p.id_produto, p.nome, p.preco, COALESCE(e.quant_present, 0) AS quant_present
